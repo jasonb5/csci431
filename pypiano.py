@@ -20,9 +20,75 @@ class View(object):
   def handle_event(self, event):
     return
 
+class ScrollWidget(object):
+  def __init__(self, size):
+    self.size = size
+
+    self.font = pygame.font.SysFont(pygame.font.get_default_font(), 40)
+
+    self.screen = pygame.Surface(size)
+
+    self.items = []
+    self.dirty = False
+    self.scroll_inc = 0
+    self.scroll_y = 0
+
+  def add(self, title):
+    text = self.font.render(title, True, WHITE)
+    size = self.font.size(title)
+    self.items.append([text, size])
+    self.dirty = True
+    if self.scroll_y == 0: self.scroll_y = size[1]
+
+  def render(self):
+    if self.dirty:
+      self.screen.fill(BLACK)
+
+      pygame.draw.rect(self.screen, WHITE, (0, 0, self.size[0], self.size[1]), 1)
+
+      vert = 0
+
+      for x in self.items:
+        self.screen.blit(x[0], (0, vert-self.scroll_y*self.scroll_inc)) 
+        vert += x[1][1]
+
+      self.dirty = False
+
+    return self.screen
+
+  def scroll_up(self):
+    self.scroll_inc += 1
+    self.dirty = True
+
+  def scroll_down(self):
+    self.scroll_inc -= 1
+    self.dirty = True
+
 class PlayView(View):
   def __init__(self, size):
     View.__init__(self, size)
+
+    self.dirty = True
+
+    self.song_list = ScrollWidget((self.size[0]*0.8, self.size[1]*0.4))
+
+    for x in range(10):
+      self.song_list.add("Song " + str(x))
+
+  def render(self):
+    if self.dirty:
+      self.screen.blit(self.song_list.render(), (self.size[0]*0.1, self.size[1]*0.3))
+      self.dirty = False
+
+    return self.screen
+
+  def handle_event(self, event):
+    if event.key == pygame.K_w:
+      self.song_list.scroll_up()
+      self.dirty = True
+    elif event.key == pygame.K_e:
+      self.song_list.scroll_down()
+      self.dirty = True
 
 class LibraryView(View):
   def __init__(self, size):
@@ -31,12 +97,36 @@ class LibraryView(View):
     self.title_size = self.font.size("Library")
     self.title = self.font.render("Library", True, WHITE)
 
+    self.dirty = True
+  
+  def render(self):
+    if self.dirty:
+      self.screen.fill(BLACK)
+
+      self.screen.blit(self.title, ((self.size[0]-self.title_size[0])/2, 0))
+    
+      self.dirty = False
+
+    return self.screen
+
 class OptionsView(View):
   def __init__(self, size):
     View.__init__(self, size)
 
     self.title_size = self.font.size("Options")
     self.title = self.font.render("Options", True, WHITE)
+
+    self.dirty = True
+
+  def render(self):
+    if self.dirty:
+      self.screen.fill(BLACK)
+
+      self.screen.blit(self.title, ((self.size[0]-self.title_size[0])/2, 0))
+    
+      self.dirty = False
+
+    return self.screen
 
 class MenuView(View):
   def __init__(self, size, event_handler):
@@ -92,6 +182,8 @@ class HorizMenuView(MenuView):
       x[2] = pos
 
   def render(self):
+    self.dirty = True
+
     MenuView.render(self)
 
     menu = self.menus[self.sel]
