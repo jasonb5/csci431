@@ -17,6 +17,9 @@ class View(object):
   def render(self):
     return self.screen
 
+  def render_keyboard_overlay(self, kb):
+    return
+
   def handle_event(self, event):
     return
 
@@ -51,22 +54,39 @@ class ScrollWidget(object):
       for x in self.items:
         self.screen.blit(x[0], (0, vert-self.scroll_y*self.scroll_inc)) 
         vert += x[1][1]
-
+      
       self.dirty = False
 
     return self.screen
 
   def scroll_up(self):
     self.scroll_inc += 1
+    if self.scroll_inc > len(self.items)-3: self.scroll_inc = len(self.items)-3
     self.dirty = True
 
   def scroll_down(self):
     self.scroll_inc -= 1
+    if self.scroll_inc < 0: self.scroll_inc = 0
     self.dirty = True
 
 class PlayView(View):
   def __init__(self, size):
     View.__init__(self, size)
+
+    self.title = self.font.render("Song Select", True, WHITE);
+    self.title_size = self.font.size("Song Select");
+
+    self.up = self.font.render("Up", True, BLACK)
+    self.up_size = self.font.size("Up")
+
+    self.down = self.font.render("Down", True, BLACK)
+    self.down_size = self.font.size("Down")
+
+    self.select = self.font.render("Select", True, BLACK);
+    self.select_size = self.font.size("Select")
+
+    self.back = self.font.render("Back", True, BLACK)
+    self.back_size = self.font.size("Back")
 
     self.dirty = True
 
@@ -77,16 +97,29 @@ class PlayView(View):
 
   def render(self):
     if self.dirty:
+      self.screen.blit(self.title, ((self.size[0]-self.title_size[0])/2, self.size[1]*0.05))
+
       self.screen.blit(self.song_list.render(), (self.size[0]*0.1, self.size[1]*0.3))
+
+      pygame.draw.circle(self.screen, WHITE, (int(self.size[0]*0.1) - 12, int(self.size[1]*0.3) + 10), 8)
+
       self.dirty = False
 
     return self.screen
+
+  def render_keyboard_overlay(self, keyboard):
+    keyboard.add_key_overlay(1, self.down, self.down_size)
+    keyboard.add_key_overlay(0, self.up, self.up_size)
+    keyboard.add_key_overlay(2, self.select, self.select_size)
+    keyboard.add_key_overlay(3, self.back, self.back_size)
+
+    return
 
   def handle_event(self, event):
     if event.key == pygame.K_w:
       self.song_list.scroll_up()
       self.dirty = True
-    elif event.key == pygame.K_e:
+    elif event.key == pygame.K_q:
       self.song_list.scroll_down()
       self.dirty = True
 
@@ -165,7 +198,7 @@ class MenuView(View):
 
     return self.screen
 
-class HorizMenuView(MenuView):
+class VertMenuView(MenuView):
   def __init__(self, size, event_handler):
     MenuView.__init__(self, size, event_handler)
 
@@ -197,14 +230,14 @@ class HorizMenuView(MenuView):
       self.sel += 1
       if self.sel > len(self.menus)-1: self.sel = len(self.menus)-1
       self.dirty = True
-    elif event.key == pygame.K_e:
+    elif event.key == pygame.K_q:
       self.sel -= 1
       if self.sel < 0: self.sel = 0
       self.dirty = True
-    elif event.key == pygame.K_q:
+    elif event.key == pygame.K_e:
       self.event_handler(self.menus[self.sel][3])
 
-class VertMenuView(MenuView):
+class HorizMenuView(MenuView):
   def __init__(self, size, event_handler, key_width):
     MenuView.__init__(self, size, event_handler)
 
@@ -226,7 +259,7 @@ class VertMenuView(MenuView):
       self.event_handler(self.menus[0][3])
     elif event.key == pygame.K_w:
       self.event_handler(self.menus[1][3])
-    elif event.key == pygame.k_e:
+    elif event.key == pygame.K_e:
       self.event_handler(self.menus[2][3])
 
 class Keyboard:
@@ -236,7 +269,7 @@ class Keyboard:
     self.w_keys = []
   
     self.b_width = 30
-    self.b_height = 150
+    self.b_height = 100
     self.b_keys = []
 
     self.spacing = 2
@@ -245,6 +278,8 @@ class Keyboard:
     self.size = (7*self.w_width+6*self.spacing, self.w_height)
 
     self.screen = pygame.Surface(self.size)
+
+    self.overlays = []
 
     offset = self.w_width+self.spacing
 
@@ -259,6 +294,21 @@ class Keyboard:
       pygame.draw.rect(self.screen, BLACK, pos) 
       self.b_keys.append([pos])
 
+  def add_key_overlay(self, index, text, size):
+    text = pygame.transform.rotate(text, 90)
+
+    loffset = (self.w_width - size[1]) / 2
+
+    offset = (index * self.w_width + (index - 1) * self.spacing + loffset, self.size[1]-size[0])
+
+    self.overlays.append([text, offset])
+
+    self.dirty = True
+
+  def clear_key_overlays(self):
+    for x in self.overlays:
+      del x
+
   def render(self):
     if self.dirty:
       self.screen.fill(BLACK)
@@ -268,6 +318,9 @@ class Keyboard:
 
       for x in self.b_keys:
         pygame.draw.rect(self.screen, BLACK, x[0])  
+
+      for overlay in self.overlays:
+        self.screen.blit(overlay[0], overlay[1])
 
       self.dirty = False
 
@@ -284,19 +337,20 @@ class pyPiano:
     lib_view = LibraryView(kb.size)
     option_view = OptionsView(kb.size)
 
-    horiz_menu = HorizMenuView(kb.size, self.event_handler)
+    horiz_menu = HorizMenuView(kb.size, self.event_handler, kb.w_width)
 
     horiz_menu.add("Play", play_view)
     horiz_menu.add("Library", lib_view)
     horiz_menu.add("Options", option_view)
 
-    vert_menu = VertMenuView(kb.size, self.event_handler, kb.w_width)
+    vert_menu = VertMenuView(kb.size, self.event_handler)
 
     vert_menu.add("Play", play_view)
     vert_menu.add("Library", lib_view)
     vert_menu.add("Options", option_view)
 
     self.view = horiz_menu
+    self.last_view = None
 
     size = (kb.size[0], kb.size[1]*2)
 
@@ -322,6 +376,13 @@ class pyPiano:
       view_screen = self.view.render()
 
       screen.blit(view_screen, (0, 0))  
+
+      if self.view != self.last_view:
+        kb.clear_key_overlays()
+
+        self.view.render_keyboard_overlay(kb);
+
+        self.last_view = self.view
 
       kb_screen = kb.render()
 
