@@ -233,6 +233,11 @@ class VertMenuView(MenuView):
     self.down_text = self.create_text("Down", BLACK)
     self.select_text = self.create_text("Select", BLACK) 
 
+    self.add("Play", PlayView(game, size)) 
+    self.add("Library", LibraryView(game, size))
+    self.add("Options", OptionsView(game, size))
+    self.add("Quit", None)
+
   def init_layout(self):
     max_width = 0
 
@@ -247,10 +252,11 @@ class VertMenuView(MenuView):
     screen = super(VertMenuView, self).render()
 
     if self.is_dirty():
-      menu = self.menus[self.sel]
+      if len(self.menus) > 0:
+        menu = self.menus[self.sel]
 
-      pygame.draw.circle(screen, WHITE, (menu[2][0]-12, menu[2][1]+12), 10)
-    
+        pygame.draw.circle(screen, WHITE, (menu[2][0]-12, menu[2][1]+12), 10)
+      
     return screen
 
   def render_keyboard_overlay(self, kb):
@@ -268,6 +274,9 @@ class VertMenuView(MenuView):
       if self.sel < 0: self.sel = 0
       self.set_dirty()
     elif event.key == pygame.K_e:
+      if self.sel == 3:
+        sys.exit(0)
+
       self.game.change_view(self.menus[self.sel][3])
 
 class HorizMenuView(MenuView):
@@ -275,6 +284,11 @@ class HorizMenuView(MenuView):
     MenuView.__init__(self, game, size)
 
     self.key_width = key_width
+
+    self.add("Play", PlayView(game, size)) 
+    self.add("Library", LibraryView(game, size))
+    self.add("Options", OptionsView(game, size))
+    self.add("Quit", None)
 
   def init_layout(self):
     max_height = 0
@@ -294,6 +308,8 @@ class HorizMenuView(MenuView):
       self.game.change_view(self.menus[1][3])
     elif event.key == pygame.K_e:
       self.game.change_view(self.menus[2][3])
+    elif event.key == pygame.K_r:
+      sys.exit(1)
 
 class Keyboard:
   def __init__(self):
@@ -367,23 +383,8 @@ class pyPiano:
 
     kb = Keyboard()
 
-    play_view = PlayView(self, kb.size)
-    lib_view = LibraryView(self, kb.size)
-    option_view = OptionsView(self, kb.size)
-
     horiz_menu = HorizMenuView(self, kb.size, kb.w_width)
-
-    horiz_menu.add("Play", play_view)
-    horiz_menu.add("Library", lib_view)
-    horiz_menu.add("Options", option_view)
-
     vert_menu = VertMenuView(self, kb.size)
-
-    vert_menu.add("Play", play_view)
-    vert_menu.add("Library", lib_view)
-    vert_menu.add("Options", option_view)
-
-    self.__dirty = True
 
     self.view = vert_menu
     self.last_view = None
@@ -391,6 +392,8 @@ class pyPiano:
     self.view.set_dirty()
 
     size = (kb.size[0], kb.size[1]*2)
+
+    self.__dirty = True
 
     screen = pygame.display.set_mode(size)    
 
@@ -406,6 +409,8 @@ class pyPiano:
               self.view = vert_menu
             else:
               self.view = horiz_menu
+
+            self.view.set_dirty()
       
             self.__dirty = True
           else:
