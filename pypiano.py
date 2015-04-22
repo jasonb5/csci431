@@ -7,12 +7,21 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
 class View(object):
-  def __init__(self, size):
+  def __init__(self, game, size):
     self.size = size
 
     self.font = pygame.font.SysFont(pygame.font.get_default_font(), 40)
 
     self.screen = pygame.Surface(self.size)
+
+    self.game = game;
+
+  def create_text(self, text, color = WHITE):
+    text_surface = self.font.render(text, True, color)
+
+    text_size = self.font.size(text)
+
+    return [text_surface, text_size]
 
   def render(self):
     return self.screen
@@ -70,23 +79,16 @@ class ScrollWidget(object):
     self.dirty = True
 
 class PlayView(View):
-  def __init__(self, size):
-    View.__init__(self, size)
+  def __init__(self, game, size):
+    View.__init__(self, game, size)
 
     self.title = self.font.render("Song Select", True, WHITE);
     self.title_size = self.font.size("Song Select");
 
-    self.up = self.font.render("Up", True, BLACK)
-    self.up_size = self.font.size("Up")
-
-    self.down = self.font.render("Down", True, BLACK)
-    self.down_size = self.font.size("Down")
-
-    self.select = self.font.render("Select", True, BLACK);
-    self.select_size = self.font.size("Select")
-
-    self.back = self.font.render("Back", True, BLACK)
-    self.back_size = self.font.size("Back")
+    self.up_text = self.create_text("Up", BLACK)
+    self.down_text = self.create_text("Down", BLACK)
+    self.select_text = self.create_text("Select", BLACK)
+    self.back_text = self.create_text("Back", BLACK)
 
     self.dirty = True
 
@@ -107,13 +109,11 @@ class PlayView(View):
 
     return self.screen
 
-  def render_keyboard_overlay(self, keyboard):
-    keyboard.add_key_overlay(1, self.down, self.down_size)
-    keyboard.add_key_overlay(0, self.up, self.up_size)
-    keyboard.add_key_overlay(2, self.select, self.select_size)
-    keyboard.add_key_overlay(3, self.back, self.back_size)
-
-    return
+  def render_keyboard_overlay(self, kb):
+    kb.add_key_overlay(0, self.up_text[0], self.up_text[1])
+    kb.add_key_overlay(1, self.down_text[0], self.down_text[1])
+    kb.add_key_overlay(2, self.select_text[0], self.select_text[1])
+    kb.add_key_overlay(3, self.back_text[0], self.back_text[1])
 
   def handle_event(self, event):
     if event.key == pygame.K_w:
@@ -122,10 +122,12 @@ class PlayView(View):
     elif event.key == pygame.K_q:
       self.song_list.scroll_down()
       self.dirty = True
+    elif event.key == pygame.K_r:
+      self.game.previous_view()
 
 class LibraryView(View):
-  def __init__(self, size):
-    View.__init__(self, size)
+  def __init__(self, game, size):
+    View.__init__(self, game, size)
 
     self.title_size = self.font.size("Library")
     self.title = self.font.render("Library", True, WHITE)
@@ -143,8 +145,8 @@ class LibraryView(View):
     return self.screen
 
 class OptionsView(View):
-  def __init__(self, size):
-    View.__init__(self, size)
+  def __init__(self, game, size):
+    View.__init__(self, game, size)
 
     self.title_size = self.font.size("Options")
     self.title = self.font.render("Options", True, WHITE)
@@ -162,10 +164,9 @@ class OptionsView(View):
     return self.screen
 
 class MenuView(View):
-  def __init__(self, size, event_handler):
-    View.__init__(self, size)
+  def __init__(self, game, size):
+    View.__init__(self, game, size)
 
-    self.event_handler = event_handler
     self.vert = 0
     self.dirty = True
     self.init = False
@@ -199,10 +200,14 @@ class MenuView(View):
     return self.screen
 
 class VertMenuView(MenuView):
-  def __init__(self, size, event_handler):
-    MenuView.__init__(self, size, event_handler)
+  def __init__(self, game, size):
+    MenuView.__init__(self, game, size)
 
     self.sel = 0
+
+    self.up_text = self.create_text("Up", BLACK)
+    self.down_text = self.create_text("Down", BLACK)
+    self.select_text = self.create_text("Select", BLACK) 
 
   def init_layout(self):
     max_width = 0
@@ -225,6 +230,11 @@ class VertMenuView(MenuView):
   
     return self.screen
 
+  def render_keyboard_overlay(self, kb):
+    kb.add_key_overlay(0, self.up_text[0], self.up_text[1])
+    kb.add_key_overlay(1, self.down_text[0], self.down_text[1])
+    kb.add_key_overlay(2, self.select_text[0], self.select_text[1])
+
   def handle_event(self, event):
     if event.key == pygame.K_w:
       self.sel += 1
@@ -235,11 +245,11 @@ class VertMenuView(MenuView):
       if self.sel < 0: self.sel = 0
       self.dirty = True
     elif event.key == pygame.K_e:
-      self.event_handler(self.menus[self.sel][3])
+      self.game.change_view(self.menus[self.sel][3])
 
 class HorizMenuView(MenuView):
-  def __init__(self, size, event_handler, key_width):
-    MenuView.__init__(self, size, event_handler)
+  def __init__(self, game, size, key_width):
+    MenuView.__init__(self, game, size)
 
     self.key_width = key_width
 
@@ -256,11 +266,11 @@ class HorizMenuView(MenuView):
 
   def handle_event(self, event):
     if event.key == pygame.K_q:
-      self.event_handler(self.menus[0][3])
+      self.game.change_viewr(self.menus[0][3])
     elif event.key == pygame.K_w:
-      self.event_handler(self.menus[1][3])
+      self.game.change_viewr(self.menus[1][3])
     elif event.key == pygame.K_e:
-      self.event_handler(self.menus[2][3])
+      self.game.change_viewr(self.menus[2][3])
 
 class Keyboard:
   def __init__(self):
@@ -306,8 +316,9 @@ class Keyboard:
     self.dirty = True
 
   def clear_key_overlays(self):
-    for x in self.overlays:
-      del x
+    del self.overlays[:]
+
+    self.dirty = True
 
   def render(self):
     if self.dirty:
@@ -333,23 +344,25 @@ class pyPiano:
 
     kb = Keyboard()
 
-    play_view = PlayView(kb.size)
-    lib_view = LibraryView(kb.size)
-    option_view = OptionsView(kb.size)
+    play_view = PlayView(self, kb.size)
+    lib_view = LibraryView(self, kb.size)
+    option_view = OptionsView(self, kb.size)
 
-    horiz_menu = HorizMenuView(kb.size, self.event_handler, kb.w_width)
+    horiz_menu = HorizMenuView(self, kb.size, kb.w_width)
 
     horiz_menu.add("Play", play_view)
     horiz_menu.add("Library", lib_view)
     horiz_menu.add("Options", option_view)
 
-    vert_menu = VertMenuView(kb.size, self.event_handler)
+    vert_menu = VertMenuView(self, kb.size)
 
     vert_menu.add("Play", play_view)
     vert_menu.add("Library", lib_view)
     vert_menu.add("Options", option_view)
 
-    self.view = horiz_menu
+    self.dirty = True
+
+    self.view = vert_menu
     self.last_view = None
 
     size = (kb.size[0], kb.size[1]*2)
@@ -368,6 +381,8 @@ class pyPiano:
               self.view = vert_menu
             else:
               self.view = horiz_menu
+      
+            self.dirty = True
           else:
             self.view.handle_event(event)
 
@@ -377,12 +392,12 @@ class pyPiano:
 
       screen.blit(view_screen, (0, 0))  
 
-      if self.view != self.last_view:
+      if self.dirty:
         kb.clear_key_overlays()
 
         self.view.render_keyboard_overlay(kb);
 
-        self.last_view = self.view
+        self.dirty = False
 
       kb_screen = kb.render()
 
@@ -392,8 +407,21 @@ class pyPiano:
 
       clock.tick(30)
 
-  def event_handler(self, screen):
-    self.view = screen
+  def change_view(self, view):
+    self.last_view = self.view
+
+    self.view = view
+
+    self.dirty = True
+
+  def previous_view(self):
+    temp_view = self.view
+
+    self.view = self.last_view
+
+    self.last_view = temp_view
+
+    self.dirty = True
 
 piano = pyPiano()
 piano.run()
