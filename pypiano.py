@@ -41,7 +41,7 @@ class ScrollWidget(object):
     self.screen = pygame.Surface(size)
 
     self.items = []
-    self.dirty = False
+    self.dirty = True
     self.scroll_inc = 0
     self.scroll_y = 0
 
@@ -132,17 +132,47 @@ class LibraryView(View):
     self.title_size = self.font.size("Library")
     self.title = self.font.render("Library", True, WHITE)
 
+    self.up_text = self.create_text("Up", BLACK)
+    self.down_text = self.create_text("Down", BLACK)
+    self.select_text = self.create_text("Select", BLACK)
+    self.back_text = self.create_text("Back", BLACK)
+
+    self.library_list = ScrollWidget((size[0]*0.8, size[1]*0.50))
+
+    for x in range(10):
+      self.library_list.add("Item " + str(x))
+
     self.dirty = True
+
+  def render_keyboard_overlay(self, kb):
+    kb.add_key_overlay(0, self.up_text[0], self.up_text[1])
+    kb.add_key_overlay(1, self.down_text[0], self.down_text[1])
+    kb.add_key_overlay(2, self.select_text[0], self.select_text[1])
+    kb.add_key_overlay(3, self.back_text[0], self.back_text[1])
   
   def render(self):
     if self.dirty:
       self.screen.fill(BLACK)
 
       self.screen.blit(self.title, ((self.size[0]-self.title_size[0])/2, 0))
+
+      self.screen.blit(self.library_list.render(), (self.size[0]*0.1, self.size[1]*0.3)) 
+
+      pygame.draw.circle(self.screen, WHITE, (int(self.size[0]*0.1)-12, int(self.size[1]*0.3)+8), 8)
     
       self.dirty = False
 
     return self.screen
+
+  def handle_event(self, event):
+    if event.key == pygame.K_q:
+      self.library_list.scroll_up()
+      self.dirty = True
+    elif event.key == pygame.K_w:
+      self.library_list.scroll_down()
+      self.dirty = True
+    elif event.key == pygame.K_r:
+      self.game.previous_view()
 
 class OptionsView(View):
   def __init__(self, game, size):
@@ -266,11 +296,11 @@ class HorizMenuView(MenuView):
 
   def handle_event(self, event):
     if event.key == pygame.K_q:
-      self.game.change_viewr(self.menus[0][3])
+      self.game.change_view(self.menus[0][3])
     elif event.key == pygame.K_w:
-      self.game.change_viewr(self.menus[1][3])
+      self.game.change_view(self.menus[1][3])
     elif event.key == pygame.K_e:
-      self.game.change_viewr(self.menus[2][3])
+      self.game.change_view(self.menus[2][3])
 
 class Keyboard:
   def __init__(self):
