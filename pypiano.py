@@ -20,6 +20,8 @@ class View(object):
     
     self.game = game;
 
+    self.msg_text = self.create_text("", WHITE)
+
   def set_dirty(self):
     self.__dirty = True
 
@@ -28,6 +30,14 @@ class View(object):
 
   def is_dirty(self):
     return self.__dirty
+
+  def set_msg_text(self, msg):
+    self.msg_text = self.create_text(msg, WHITE)
+
+    self.set_dirty()
+
+  def clear_msg_text(self):
+    self.msg_text = self.create_text("", WHITE)
 
   def create_text(self, text, color = WHITE):
     text_surface = self.font.render(text, True, color)
@@ -43,6 +53,10 @@ class View(object):
       offset = ((self.size[0]-self.title_text[1][0])/2, self.size[1]*0.1)
 
       self.__screen.blit(self.title_text[0], offset) 
+
+      offset = ((self.size[0]-self.msg_text[1][0])/2, self.size[1]*0.9-self.msg_text[1][1])
+
+      self.__screen.blit(self.msg_text[0], offset)
     
     return self.__screen
 
@@ -56,7 +70,7 @@ class ScrollWidget(object):
   def __init__(self, size):
     self.size = size
 
-    self.font = pygame.font.SysFont(pygame.font.get_default_font(), 40)
+    self.font = pygame.font.SysFont(pygame.font.get_default_font(), 30)
 
     self.screen = pygame.Surface(size)
 
@@ -90,7 +104,7 @@ class ScrollWidget(object):
 
   def scroll_up(self):
     self.scroll_inc += 1
-    if self.scroll_inc > len(self.items)-3: self.scroll_inc = len(self.items)-3
+    if self.scroll_inc > len(self.items)-1: self.scroll_inc = len(self.items)-1
     self.__dirty = True
 
   def scroll_down(self):
@@ -106,6 +120,8 @@ class PlayView(View):
     self.down_text = self.create_text("Down", BLACK)
     self.select_text = self.create_text("Select", BLACK)
     self.back_text = self.create_text("Back", BLACK)
+
+    self.next_view = GameStyleView(game, size)
 
     self.song_list = ScrollWidget((self.size[0]*0.8, self.size[1]*0.4))
 
@@ -134,9 +150,69 @@ class PlayView(View):
       self.set_dirty()
     elif event.key == pygame.K_q:
       self.song_list.scroll_down()
-      self.seT_dirty()
+      self.set_dirty()
+    elif event.key == pygame.K_e:
+      self.game.change_view(self.next_view)
     elif event.key == pygame.K_r:
       self.game.previous_view()
+
+class GameStyleView(View):
+  def __init__(self, game, size):
+    View.__init__(self, game, size, "Game Style")
+
+    self.up_text = self.create_text("Up", BLACK)
+    self.down_text = self.create_text("Down", BLACK)
+    self.select_text = self.create_text("Play", BLACK)
+    self.back_text = self.create_text("Back", BLACK)
+
+    self.style_list = ScrollWidget((self.size[0]*0.8, self.size[1]*0.4))
+
+    self.style_list.add("Practice Melody")
+    self.style_list.add("Practice Melody (Left Only)")
+    self.style_list.add("Practice Melody (Right Only)")
+    self.style_list.add("Practice Rhythm")
+    self.style_list.add("Practice Rhythm (Left Only)")
+    self.style_list.add("Practice Rhythm (Right Only)")
+    self.style_list.add("Song Recital")
+    self.style_list.add("Song Recital (Left Only)")
+    self.style_list.add("Song Recital (Right Only)")
+
+  def render(self):
+    screen = super(GameStyleView, self).render()
+
+    if self.is_dirty():
+      screen.blit(self.style_list.render(), (self.size[0]*0.1, self.size[1]*0.3))
+
+      pygame.draw.circle(screen, WHITE, (int(self.size[0]*0.1) - 12, int(self.size[1]*0.3) + 10), 8)
+
+    return screen
+
+  def render_keyboard_overlay(self, kb):
+    kb.add_key_overlay(0, self.up_text[0], self.up_text[1])
+    kb.add_key_overlay(1, self.down_text[0], self.down_text[1])
+    kb.add_key_overlay(2, self.select_text[0], self.select_text[1])
+    kb.add_key_overlay(3, self.back_text[0], self.back_text[1])
+
+  def handle_event(self, event):
+    if event.key == pygame.K_w:
+      self.style_list.scroll_up()
+      self.set_dirty()
+    elif event.key == pygame.K_q:
+      self.style_list.scroll_down()
+      self.set_dirty() 
+    elif event.key == pygame.K_e:
+      self.set_msg_text("Play")
+    elif event.key == pygame.K_r:
+      self.game.previous_view()
+
+class AudioView(View):
+  def __init__(self, game, size):
+    View.__init__(self, game, size, "Audio")
+
+  def render(self):
+    screen = super(AudioView, self).render()
+
+    return screen
 
 class LibraryView(View):
   def __init__(self, game, size):
@@ -144,7 +220,8 @@ class LibraryView(View):
 
     self.up_text = self.create_text("Up", BLACK)
     self.down_text = self.create_text("Down", BLACK)
-    self.select_text = self.create_text("Select", BLACK)
+    self.add_text = self.create_text("Add", BLACK)
+    self.remove_text = self.create_text("Remove", BLACK)
     self.back_text = self.create_text("Back", BLACK)
 
     self.library_list = ScrollWidget((size[0]*0.8, size[1]*0.50))
@@ -155,8 +232,9 @@ class LibraryView(View):
   def render_keyboard_overlay(self, kb):
     kb.add_key_overlay(0, self.up_text[0], self.up_text[1])
     kb.add_key_overlay(1, self.down_text[0], self.down_text[1])
-    kb.add_key_overlay(2, self.select_text[0], self.select_text[1])
-    kb.add_key_overlay(3, self.back_text[0], self.back_text[1])
+    kb.add_key_overlay(2, self.add_text[0], self.add_text[1])
+    kb.add_key_overlay(3, self.remove_text[0], self.remove_text[1])
+    kb.add_key_overlay(4, self.back_text[0], self.back_text[1])
   
   def render(self):
     screen = super(LibraryView, self).render()
@@ -175,17 +253,57 @@ class LibraryView(View):
     elif event.key == pygame.K_q:
       self.library_list.scroll_down()
       self.set_dirty()
+    elif event.key == pygame.K_e:
+      self.set_msg_text("Add song")
     elif event.key == pygame.K_r:
+      self.set_msg_text("Remove song")
+    elif event.key == pygame.K_t:
       self.game.previous_view()
 
-class OptionsView(View):
+class UserProfilesView(View):
   def __init__(self, game, size):
-    View.__init__(self, game, size, "Options")
+    View.__init__(self, game, size, "User Profiles")
+
+    self.up_text = self.create_text("Up", BLACK)
+    self.down_text = self.create_text("Down", BLACK)
+    self.add_text = self.create_text("Add", BLACK)
+    self.remove_text = self.create_text("Remove", BLACK)
+    self.back_text = self.create_text("Back", BLACK)
+
+    self.profile_list = ScrollWidget((size[0]*0.8, size[1]*0.5))
+
+    self.profile_list.add("Anonymous")
+
+  def render_keyboard_overlay(self, kb):
+    kb.add_key_overlay(0, self.up_text[0], self.up_text[1])
+    kb.add_key_overlay(1, self.down_text[0], self.down_text[1])
+    kb.add_key_overlay(2, self.add_text[0], self.add_text[1])
+    kb.add_key_overlay(3, self.remove_text[0], self.remove_text[1])
+    kb.add_key_overlay(4, self.back_text[0], self.back_text[1])
 
   def render(self):
-    screen = super(OptionsView, self).render()
+    screen = super(UserProfilesView, self).render()
+
+    if self.is_dirty():
+      screen.blit(self.profile_list.render(), (self.size[0]*0.1, self.size[1]*0.3)) 
+
+      pygame.draw.circle(screen, WHITE, (int(self.size[0]*0.1)-12, int(self.size[1]*0.3)+8), 8)
 
     return screen
+
+  def handle_event(self, event):
+    if event.key == pygame.K_q:
+      self.profile_list.scroll_down()
+      self.set_dirty()
+    elif event.key == pygame.K_w:
+      self.profile_list.scroll_up()
+      self.set_dirty()
+    elif event.key == pygame.K_e:
+      self.set_msg_text("Add user profile")
+    elif event.key == pygame.K_r:
+      self.set_msg_text("Remove user profile")
+    elif event.key == pygame.K_t:
+      self.game.previous_view()
 
 class MenuView(View):
   def __init__(self, game, size):
@@ -222,6 +340,57 @@ class MenuView(View):
         screen.blit(x[0], x[2])
 
     return screen
+
+class OptionsView(MenuView):
+  def __init__(self, game, size):
+    MenuView.__init__(self, game, size)
+
+    self.sel = 0
+
+    self.up_text = self.create_text("Up", BLACK)
+    self.down_text = self.create_text("Down", BLACK)
+    self.select_text = self.create_text("Select", BLACK) 
+
+    self.add("User Profiles", UserProfilesView(game, size))
+    self.add("Audio", AudioView(game, size))
+
+  def init_layout(self):
+    max_width = 0
+
+    for x in self.menus:
+      if x[1][0] > max_width: max_width = x[1][0]
+
+    for x in self.menus:
+      pos = ((self.size[0]-max_width)/2, 20+x[2][1])
+      x[2] = pos
+
+  def render(self):
+    screen = super(OptionsView, self).render()
+
+    if self.is_dirty():
+      if len(self.menus) > 0:
+        menu = self.menus[self.sel]
+
+        pygame.draw.circle(screen, WHITE, (menu[2][0]-12, menu[2][1]+12), 10)
+      
+    return screen
+
+  def render_keyboard_overlay(self, kb):
+    kb.add_key_overlay(0, self.up_text[0], self.up_text[1])
+    kb.add_key_overlay(1, self.down_text[0], self.down_text[1])
+    kb.add_key_overlay(2, self.select_text[0], self.select_text[1])
+
+  def handle_event(self, event):
+    if event.key == pygame.K_w:
+      self.sel += 1
+      if self.sel > len(self.menus)-1: self.sel = len(self.menus)-1
+      self.set_dirty()
+    elif event.key == pygame.K_q:
+      self.sel -= 1
+      if self.sel < 0: self.sel = 0
+      self.set_dirty()
+    elif event.key == pygame.K_e:
+      self.game.change_view(self.menus[self.sel][3])
 
 class VertMenuView(MenuView):
   def __init__(self, game, size):
@@ -313,12 +482,12 @@ class HorizMenuView(MenuView):
 
 class Keyboard:
   def __init__(self):
-    self.w_width = 40
-    self.w_height = 200
+    self.w_width = 60
+    self.w_height = 300
     self.w_keys = []
   
-    self.b_width = 30
-    self.b_height = 100
+    self.b_width = 50
+    self.b_height = 200
     self.b_keys = []
 
     self.spacing = 2
@@ -387,8 +556,9 @@ class pyPiano:
     vert_menu = VertMenuView(self, kb.size)
 
     self.view = vert_menu
-    self.last_view = None
 
+    self.view_stack = []
+  
     self.view.set_dirty()
 
     size = (kb.size[0], kb.size[1]*2)
@@ -440,7 +610,9 @@ class pyPiano:
       clock.tick(30)
 
   def change_view(self, view):
-    self.last_view = self.view
+    self.view.clear_msg_text()
+
+    self.view_stack.insert(0, self.view)
 
     self.view = view
 
@@ -449,11 +621,9 @@ class pyPiano:
     self.__dirty = True
 
   def previous_view(self):
-    temp_view = self.view
+    self.view.clear_msg_text()
 
-    self.view = self.last_view
-
-    self.last_view = temp_view
+    self.view = self.view_stack.pop(0)
 
     self.view.set_dirty()
 
