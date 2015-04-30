@@ -2,6 +2,7 @@
 
 import sys
 import pygame
+import pygame.midi
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -64,6 +65,9 @@ class View(object):
     return
 
   def handle_event(self, event):
+    return
+
+  def handle_midi_event(self, event):
     return
 
 class ScrollWidget(object):
@@ -156,6 +160,18 @@ class PlayView(View):
     elif event.key == pygame.K_r:
       self.game.previous_view()
 
+  def handle_midi_event(self, event):
+    if event[1] % 36 == 0:
+      self.song_list.scroll_up()
+      self.set_dirty()
+    elif event[1] % 38 == 0:
+      self.song_list.scroll_down()
+      self.set_dirty()
+    elif event[1] % 40 == 0:
+      self.game.change_view(self.next_view)
+    elif event[1] % 42 == 0:
+      self.game.previous_view()
+
 class GameStyleView(View):
   def __init__(self, game, size):
     View.__init__(self, game, size, "Game Style")
@@ -203,6 +219,18 @@ class GameStyleView(View):
     elif event.key == pygame.K_e:
       self.set_msg_text("Play")
     elif event.key == pygame.K_r:
+      self.game.previous_view()
+
+  def handle_midi_event(self, event):
+    if event[1] % 36 == 0:
+      self.style_list.scroll_up()
+      self.set_dirty()
+    elif event[1] % 38 == 0:
+      self.style_list.scroll_down()
+      self.set_dirty() 
+    elif event[1] % 40 == 0:
+      self.set_msg_text("Play")
+    elif event[1] % 42 == 0:
       self.game.previous_view()
 
 class AudioView(View):
@@ -260,6 +288,20 @@ class LibraryView(View):
     elif event.key == pygame.K_t:
       self.game.previous_view()
 
+  def handle_midi_event(self, event):
+    if event[1] % 36 == 0:
+      self.style_list.scroll_up()
+      self.set_dirty()
+    elif event[1] % 38 == 0:
+      self.style_list.scroll_down()
+      self.set_dirty() 
+    elif event[1] % 40 == 0:
+      self.set_msg_text("Add song")
+    elif event[1] % 42 == 0:
+      self.set_msg_text("Remove song")
+    elif event[1] % 44 == 0:
+      self.game.previous_view()
+
 class UserProfilesView(View):
   def __init__(self, game, size):
     View.__init__(self, game, size, "User Profiles")
@@ -303,6 +345,20 @@ class UserProfilesView(View):
     elif event.key == pygame.K_r:
       self.set_msg_text("Remove user profile")
     elif event.key == pygame.K_t:
+      self.game.previous_view()
+
+  def handle_midi_event(self, event):
+    if event[1] % 36 == 0:
+      self.style_list.scroll_up()
+      self.set_dirty()
+    elif event[1] % 38 == 0:
+      self.style_list.scroll_down()
+      self.set_dirty() 
+    elif event[1] % 40 == 0:
+      self.set_msg_text("Add user profile")
+    elif event[1] % 42 == 0:
+      self.set_msg_text("Remove user profile")
+    elif event[1] % 44 == 0:
       self.game.previous_view()
 
 class MenuView(View):
@@ -392,6 +448,18 @@ class OptionsView(MenuView):
     elif event.key == pygame.K_e:
       self.game.change_view(self.menus[self.sel][3])
 
+  def handle_midi_event(self, event):
+    if event[1] % 36 == 0:
+      self.sel += 1
+      if self.sel > len(self.menus)-1: self.sel = len(self.menus)-1
+      self.set_dirty()
+    elif event[1] % 38 == 0:
+      self.sel -= 1
+      if self.sel < 0: self.sel = 0
+      self.set_dirty()
+    elif event[1] % 40 == 0:
+      self.game.change_view(self.menus[self.sel][3])
+
 class VertMenuView(MenuView):
   def __init__(self, game, size):
     MenuView.__init__(self, game, size)
@@ -448,6 +516,21 @@ class VertMenuView(MenuView):
 
       self.game.change_view(self.menus[self.sel][3])
 
+  def handle_midi_event(self, event):
+    if event[1] % 36 == 0:
+      self.sel += 1
+      if self.sel > len(self.menus)-1: self.sel = len(self.menus)-1
+      self.set_dirty()
+    elif event[1] % 38 == 0:
+      self.sel -= 1
+      if self.sel < 0: self.sel = 0
+      self.set_dirty()
+    elif event[1] % 40 == 0:
+      if self.sel == 3:
+        sys.exit(0)
+
+      self.game.change_view(self.menus[self.sel][3])
+
 class HorizMenuView(MenuView):
   def __init__(self, game, size, key_width):
     MenuView.__init__(self, game, size)
@@ -478,6 +561,16 @@ class HorizMenuView(MenuView):
     elif event.key == pygame.K_e:
       self.game.change_view(self.menus[2][3])
     elif event.key == pygame.K_r:
+      sys.exit(1)
+
+  def handle_midi_event(self, event):
+    if event[1] % 36 == 0:
+      self.game.change_view(self.menus[0][3])
+    elif event[1] % 38 == 0:
+      self.game.change_view(self.menus[1][3])
+    elif event[1] % 40 == 0:
+      self.game.change_view(self.menus[2][3])
+    elif event[1] % 42 == 0:
       sys.exit(1)
 
 class Keyboard:
@@ -546,9 +639,42 @@ class Keyboard:
     return self.screen
 
 class pyPiano:
+  def choose_midi_input(self):
+    valid_devs = []
+
+    for x in range(pygame.midi.get_count()):
+      dev = pygame.midi.get_device_info(x)
+
+      if dev[2] == 1:
+        valid_devs.append([x, dev])        
+
+    print('Select an input midi device.')
+
+    for index, dev in enumerate(valid_devs):
+      print(str(index+1) + ' - ' + dev[1][1]) 
+
+    list_length = len(valid_devs)+1
+
+    print(str(list_length) + ' - None')
+
+    selection = int(raw_input('Enter selection: '))
+
+    if selection >= list_length:
+      return None
+    else:
+      return valid_devs[selection-1][0] 
+
   def run(self):
     pygame.init()
+    pygame.midi.init()
     pygame.display.init()
+
+    dev = self.choose_midi_input()
+
+    kb_dev = None
+
+    if dev != None:
+      kb_dev = pygame.midi.Input(dev, 0)
 
     kb = Keyboard()
 
@@ -585,6 +711,14 @@ class pyPiano:
             self.__dirty = True
           else:
             self.view.handle_event(event)
+
+      if kb_dev != None and kb_dev.poll():
+        events = kb_dev.read(1)
+
+        print(events)
+
+        if len(events) > 1:
+          self.view.handle_midi_event(events[0])
 
       screen.fill(BLACK)
 
